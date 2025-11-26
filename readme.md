@@ -2,7 +2,7 @@
 
 A real-time embedded system for monitoring and analyzing driver behavior in racing simulations. This project combines Arduino-based hardware controls with a Flask web application to provide comprehensive telemetry tracking, safety alerts, and parental control features.
 
-## 🚀 Features
+## Features
 
 ### Hardware Controller
 - **Steering Control**: Rotary encoder-based steering wheel with full range (-32767 to +32767)
@@ -25,7 +25,7 @@ A real-time embedded system for monitoring and analyzing driver behavior in raci
 - **Parental Controls**: OTA-configurable limits for maximum gear and throttle
 - **Emergency Override**: Quick-access safety controls from the web interface
 
-## 📋 Requirements
+## Requirements
 
 ### Hardware
 - Arduino UNO R4 WiFi
@@ -60,7 +60,7 @@ python-socketio>=5.9.0
 - Mosquitto MQTT Broker (v2.0+)
 - Python 3.8 or higher
 
-## 🔧 Installation
+## Installation
 
 ### 1. Arduino Setup
 
@@ -97,7 +97,7 @@ python -m venv .venv
    mosquitto.exe -c mosquitto.conf -v
    ```
 
-## 🚀 Running the System
+## Running the System
 
 ### Start the MQTT Broker
 ```powershell
@@ -120,7 +120,7 @@ Or access from other devices on the network:
 http://<your-ip-address>:5000
 ```
 
-## 📡 MQTT Topics
+## MQTT Topics
 
 ### Published by Arduino
 - `car/driver1/steering` - Steering wheel position (-32767 to 32767)
@@ -133,7 +133,7 @@ http://<your-ip-address>:5000
 ### Subscribed by Arduino
 - `car/driver1/parental_control_settings` - OTA configuration updates (JSON)
 
-## 🎮 Usage
+## Usage
 
 ### Basic Operation
 1. Power on the Arduino controller
@@ -154,7 +154,7 @@ http://<your-ip-address>:5000
 - Click "Dismiss" to acknowledge the alert
 - Click "Engage Parental Control" to immediately activate safety limits
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 Embedded_final/
@@ -167,7 +167,7 @@ Embedded_final/
 └── .venv/                           # Python virtual environment
 ```
 
-## 🔒 Safety Features
+## Safety Features
 
 ### Alert Triggers
 - Sustained high gear (≥4) with high throttle (≥70%) for 10+ seconds
@@ -198,7 +198,7 @@ Embedded_final/
 - Test with Serial Monitor output
 - Check for loose connections
 
-## 📝 Configuration
+## Configuration
 
 ### Arduino Pin Configuration
 ```cpp
@@ -218,7 +218,7 @@ Edit `app.py` to configure:
 - Server port: `port=5000`
 - Default parental control values
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please follow these guidelines:
 1. Fork the repository
@@ -227,15 +227,15 @@ Contributions are welcome! Please follow these guidelines:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is provided as-is for educational purposes.
 
-## 👥 Authors
+## Authors
 
 Embedded Systems Project Team
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Arduino community for libraries and support
 - Flask and Socket.IO documentation
