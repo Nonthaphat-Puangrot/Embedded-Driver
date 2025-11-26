@@ -33,8 +33,7 @@ A real-time embedded system for monitoring and analyzing driver behavior in raci
 - 2x Analog pedals (throttle and brake pedals)
 - 2x Push buttons (gear up/down)
 - LED matrix (built-in on UNO R4)
-- PWM-capable output pin for RPM signal
-- Voltmeter
+- Voltmeter for display RPM signal
 
 ### Software Dependencies
 
