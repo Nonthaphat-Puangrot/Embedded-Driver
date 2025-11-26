@@ -1,6 +1,6 @@
 # Driver Behavior Monitoring System
 
-A real-time embedded system for monitoring and analyzing driver behavior in racing simulations. This project combines Arduino-based hardware controls with a Flask web application to provide comprehensive telemetry tracking, safety alerts, and parental control features.
+A real-time embedded system for monitoring and analyzing driver behavior. This project combines Arduino-based hardware controls with a Flask web application to provide comprehensive telemetry tracking, safety alerts, and parental control features.
 
 ## Features
 
