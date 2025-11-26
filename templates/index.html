@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Driver Behavior Monitoring System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .connected {
+            background-color: #27ae60;
+        }
+
+        .disconnected {
+            background-color: #e74c3c;
+        }
+
+        /* Alert System Styles */
+        .alert-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .alert-popup {
+            background: white;
+            color: #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: alertSlideIn 0.3s ease-out;
+        }
+
+        @keyframes alertSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .alert-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .alert-critical .alert-icon {
+            color: #e74c3c;
+        }
+
+        .alert-medium .alert-icon {
+            color: #f39c12;
+        }
+
+        .alert-low .alert-icon {
+            color: #3498db;
+        }
+
+        .alert-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .alert-message {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .alert-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .alert-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .alert-btn-primary {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .alert-btn-primary:hover {
+            background: #c0392b;
+        }
+
+        .alert-btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .alert-btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        /* Alert notification bar */
+        .alert-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .alert-notification.show {
+            transform: translateX(0);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .telemetry-panel, .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ecf0f1;
+        }
+
+        .gauge-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .gauge {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gauge-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .gauge-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .gauge-unit {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .gear-display {
+            grid-column: span 2;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gear-value {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #f39c12, #e74c3c);
+            transition: width 0.3s ease;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-section h3 {
+            margin-bottom: 15px;
+            color: #ecf0f1;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-bottom: 15px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .range-control {
+            margin-bottom: 15px;
+        }
+
+        .range-control label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .range-control input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .range-value {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 3px 8px;
+            border-radius: 5px;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .success {
+            background-color: rgba(39, 174, 96, 0.3);
+            border: 1px solid #27ae60;
+        }
+
+        .error {
+            background-color: rgba(231, 76, 60, 0.3);
+            border: 1px solid #e74c3c;
+        }
+
+        .timestamp {
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .gauge-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Driver Behavior Monitoring System</h1>
+            <div id="connectionStatus" class="connection-status disconnected">
+                🔴 Disconnected
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Telemetry Panel -->
+            <div class="telemetry-panel">
+                <h2 class="panel-title">📊 Live Telemetry</h2>
+                
+                <div class="gauge-container">
+                    <div class="gauge">
+                        <div class="gauge-label">Steering</div>
+                        <div class="gauge-value" id="steeringValue">0</div>
+                        <div class="gauge-unit">raw</div>
+                    </div>
+                    
+                    <div class="gauge">
+                        <div class="gauge-label">RPM Signal</div>
+                        <div class="gauge-value" id="rpmValue">0</div>
+                        <div class="gauge-unit">PWM</div>
+                    </div>
+                    
+                    <div class="gauge">
+                        <div class="gauge-label">Throttle</div>
+                        <div class="gauge-value" id="throttleValue">0</div>
+                        <div class="gauge-unit">%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="throttleBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="gauge">
+                        <div class="gauge-label">Brake</div>
+                        <div class="gauge-value" id="brakeValue">0</div>
+                        <div class="gauge-unit">%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="brakeBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="gear-display">
+                        <div class="gauge-label">Current Gear</div>
+                        <div class="gear-value" id="gearValue">N</div>
+                    </div>
+                </div>
+                
+                <div class="timestamp">
+                    Last Update: <span id="timestamp">--:--:--</span>
+                </div>
+            </div>
+
+            <!-- Parental Control Panel -->
+            <div class="control-panel">
+                <h2 class="panel-title">👨‍👩‍👧‍👦 Parental Control</h2>
+                
+                <div class="control-section">
+                    <h3>Enable Parental Control</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="parentalToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span id="parentalStatus">Disabled</span>
+                </div>
+                
+                <div class="control-section">
+                    <div class="range-control">
+                        <label for="maxGear">Maximum Gear Limit:</label>
+                        <input type="range" id="maxGear" min="1" max="5" value="3">
+                        <span class="range-value" id="maxGearValue">3</span>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <div class="range-control">
+                        <label for="maxThrottle">Maximum Throttle (%):</label>
+                        <input type="range" id="maxThrottle" min="10" max="100" value="50">
+                        <span class="range-value" id="maxThrottleValue">50%</span>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="updateParentalControl()">
+                    📡 Send OTA Update
+                </button>
+                
+                <div id="statusMessage" class="status-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection with better error handling
+        const socket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            timeout: 20000
+        });
+        
+        let connectionRetries = 0;
+        const maxRetries = 5;
+        
+        // Alert polling mechanism
+        let lastAlertId = 0;
+        
+        // Connection status handling
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            connectionRetries = 0;
+            updateConnectionStatus(true);
+            // Request initial data
+            socket.emit('request_car_data');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+            updateConnectionStatus(false);
+        });
+        
+        socket.on('connect_error', function(error) {
+            console.error('Connection error:', error);
+            connectionRetries++;
+            if (connectionRetries >= maxRetries) {
+                showStatusMessage('Failed to connect to server after multiple attempts', 'error');
+            }
+        });
+        
+        socket.on('reconnect', function() {
+            console.log('Reconnected to server');
+            showStatusMessage('Reconnected to server', 'success');
+        });
+        
+        // Real-time car data updates
+        socket.on('car_data_update', function(data) {
+            console.log('Received car data update:', data);
+            updateTelemetryDisplay(data);
+        });
+        
+        // Parental control updates
+        socket.on('parental_control_update', function(data) {
+            console.log('Received parental control update:', data);
+            updateParentalControlDisplay(data);
+        });
+        
+        // Connection status updates
+        socket.on('connection_status', function(data) {
+            updateConnectionStatus(data.connected);
+        });
+        
+        // Heartbeat to keep connection alive
+        socket.on('heartbeat', function(data) {
+            console.log('Heartbeat received:', data.timestamp);
+        });
+        
+        // Pong response
+        socket.on('pong', function(data) {
+            console.log('Pong received:', data.timestamp);
+        });
+        
+        // Send ping every 10 seconds to test connection
+        setInterval(function() {
+            if (socket.connected) {
+                socket.emit('ping');
+            }
+        }, 10000);
+        
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'connection-status connected';
+                statusElement.innerHTML = '🟢 Connected';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                statusElement.innerHTML = '🔴 Disconnected';
+            }
+        }
+        
+        function updateTelemetryDisplay(data) {
+            // Debug: Log all received data
+            console.log('Received data:', data);
+            
+            // Update steering (display raw value)
+            document.getElementById('steeringValue').textContent = data.steering;
+            console.log('Steering value set to:', data.steering);
+            
+            // Update throttle
+            document.getElementById('throttleValue').textContent = data.throttle;
+            document.getElementById('throttleBar').style.width = data.throttle + '%';
+            
+            // Update brake
+            document.getElementById('brakeValue').textContent = data.brake;
+            document.getElementById('brakeBar').style.width = data.brake + '%';
+            
+            // Update gear
+            const gearDisplay = data.gear === 0 ? 'N' : data.gear;
+            document.getElementById('gearValue').textContent = gearDisplay;
+            
+            // Update RPM
+            document.getElementById('rpmValue').textContent = data.rpm;
+            
+            // Update timestamp
+            document.getElementById('timestamp').textContent = data.timestamp;
+            
+            // Update connection status based on data
+            updateConnectionStatus(data.connected);
+            
+            // Add visual feedback for updates
+            document.body.style.borderTop = '3px solid #27ae60';
+            setTimeout(() => {
+                document.body.style.borderTop = 'none';
+            }, 100);
+        }
+        
+        function updateParentalControlDisplay(data) {
+            document.getElementById('parentalToggle').checked = data.enabled;
+            document.getElementById('parentalStatus').textContent = data.enabled ? 'Enabled' : 'Disabled';
+            document.getElementById('maxGear').value = data.max_speed_gear;
+            document.getElementById('maxGearValue').textContent = data.max_speed_gear;
+            document.getElementById('maxThrottle').value = data.max_throttle;
+            document.getElementById('maxThrottleValue').textContent = data.max_throttle + '%';
+        }
+        
+        // Range input event listeners
+        document.getElementById('maxGear').addEventListener('input', function() {
+            document.getElementById('maxGearValue').textContent = this.value;
+        });
+        
+        document.getElementById('maxThrottle').addEventListener('input', function() {
+            document.getElementById('maxThrottleValue').textContent = this.value + '%';
+        });
+        
+        // Parental control toggle
+        document.getElementById('parentalToggle').addEventListener('change', function() {
+            const status = this.checked ? 'Enabled' : 'Disabled';
+            document.getElementById('parentalStatus').textContent = status;
+        });
+        
+        function updateParentalControl() {
+            const enabled = document.getElementById('parentalToggle').checked;
+            const maxGear = parseInt(document.getElementById('maxGear').value);
+            const maxThrottle = parseInt(document.getElementById('maxThrottle').value);
+            
+            const data = {
+                enabled: enabled,
+                max_speed_gear: maxGear,
+                max_throttle: maxThrottle
+            };
+            
+            fetch('/api/parental_control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                showStatusMessage(result.message, 'success');
+                console.log('Parental control updated:', result);
+            })
+            .catch(error => {
+                showStatusMessage('Failed to update parental control', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        function showStatusMessage(message, type) {
+            const messageElement = document.getElementById('statusMessage');
+            messageElement.textContent = message;
+            messageElement.className = 'status-message ' + type;
+            messageElement.style.display = 'block';
+            
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Request data every 2 seconds as fallback
+        setInterval(function() {
+            if (socket.connected) {
+                socket.emit('request_car_data');
+            } else {
+                // Try to fetch data via REST API as fallback
+                fetch('/api/car_data')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateTelemetryDisplay(data);
+                    })
+                    .catch(error => {
+                        console.error('Fallback data fetch failed:', error);
+                    });
+            }
+        }, 1000);
+        
+        // Request initial data when page loads
+        window.addEventListener('load', function() {
+            if (socket.connected) {
+                socket.emit('request_car_data');
+            }
+        });
+
+        // Alert System JavaScript
+        socket.on('alert_notification', function(alertData) {
+            console.log('Alert received:', alertData);
+            showAlert(alertData);
+            showNotificationBar(alertData.message);
+        });
+
+        function showAlert(alertData) {
+            const overlay = document.getElementById('alertOverlay');
+            const popup = document.getElementById('alertPopup');
+            const icon = document.getElementById('alertIcon');
+            const title = document.getElementById('alertTitle');
+            const message = document.getElementById('alertMessage');
+
+            // Set alert content
+            title.textContent = getAlertTitle(alertData.alert_type);
+            message.textContent = alertData.message;
+
+            // Set severity styling
+            popup.className = 'alert-popup alert-' + getSeverityClass(alertData.severity);
+            icon.textContent = getSeverityIcon(alertData.severity);
+
+            // Show overlay
+            overlay.style.display = 'flex';
+        }
+
+        function getAlertTitle(alertType) {
+            const titles = {
+                'SUSTAINED_AGGRESSIVE': 'Sustained Aggressive Driving!'
+            };
+            return titles[alertType] || 'Safety Alert';
+        }
+
+        function getSeverityClass(severity) {
+            return severity === 3 ? 'critical' : severity === 2 ? 'medium' : 'low';
+        }
+
+        function getSeverityIcon(severity) {
+            return severity === 3 ? '🚨' : severity === 2 ? '⚠️' : 'ℹ️';
+        }
+
+        function showNotificationBar(message) {
+            const notification = document.getElementById('alertNotification');
+            const text = document.getElementById('notificationText');
+            
+            text.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        // Alert button handlers - wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('engageParentalBtn').addEventListener('click', function() {
+                console.log('Engaging parental control...');
+                socket.emit('engage_parental_control', {});
+                hideAlert();
+                
+                // Show immediate feedback
+                showStatusMessage('Engaging parental control...', 'success');
+            });
+
+            document.getElementById('dismissAlertBtn').addEventListener('click', function() {
+                console.log('Dismissing alert...');
+                
+                // Clear alert on server via HTTP
+                fetch('/api/clear_alert', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Alert cleared on server:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error clearing alert:', error);
+                    });
+                
+                // Also emit via socket (backup)
+                socket.emit('dismiss_alert', { timestamp: Date.now() });
+                hideAlert();
+                
+                // Show immediate feedback
+                showStatusMessage('Alert dismissed', 'success');
+            });
+        });
+
+        function hideAlert() {
+            document.getElementById('alertOverlay').style.display = 'none';
+        }
+
+        // Handle parental control engagement response
+        socket.on('parental_control_engaged', function(data) {
+            showStatusMessage('Parental control has been enabled for safety', 'success');
+            console.log('Parental control engaged successfully');
+            
+            // Refresh parental control display immediately
+            socket.emit('request_parental_control');
+            
+            // Also refresh car data to see updated status
+            socket.emit('request_car_data');
+        });
+
+        socket.on('alert_dismissed', function(data) {
+            console.log('Alert dismissed successfully');
+            
+            // Refresh the page data to ensure clean state
+            socket.emit('request_car_data');
+            socket.emit('request_parental_control');
+        });
+
+        // Define checkForAlerts function after all other functions
+        function checkForAlerts() {
+            fetch('/api/latest_alert')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Polling result:', data);
+                    if (data.has_alert && data.alert.id !== lastAlertId) {
+                        console.log('New alert detected via polling:', data.alert);
+                        console.log('Showing alert popup...');
+                        lastAlertId = data.alert.id;
+                        showAlert(data.alert);
+                        showNotificationBar(data.alert.message);
+                    } else if (data.has_alert) {
+                        console.log('Alert exists but already shown (ID:', data.alert.id, 'vs lastAlertId:', lastAlertId, ')');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking for alerts:', error);
+                });
+        }
+
+        // Start alert polling after all functions are defined
+        console.log('About to start alert polling...');
+        try {
+            console.log('Starting alert polling...');
+            setInterval(checkForAlerts, 2000);
+            console.log('Alert polling started successfully!');
+            
+            // Check for alerts immediately on page load
+            console.log('Checking for alerts immediately...');
+            checkForAlerts();
+        } catch (error) {
+            console.error('Error starting alert polling:', error);
+        }
+    </script>
+
+    <!-- Alert System HTML -->
+    <div id="alertOverlay" class="alert-overlay">
+        <div id="alertPopup" class="alert-popup">
+            <div id="alertIcon" class="alert-icon">⚠️</div>
+            <div id="alertTitle" class="alert-title">Safety Alert</div>
+            <div id="alertMessage" class="alert-message">Alert message will appear here</div>
+            <div class="alert-buttons">
+                <button id="engageParentalBtn" class="alert-btn alert-btn-primary">
+                    Enable Parental Control
+                </button>
+                <button id="dismissAlertBtn" class="alert-btn alert-btn-secondary">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Notification Bar -->
+    <div id="alertNotification" class="alert-notification">
+        <span id="notificationText">Alert notification</span>
+    </div>
+</body>
+</html>
