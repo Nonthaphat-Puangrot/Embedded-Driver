@@ -233,7 +233,8 @@ This project is provided as-is for educational purposes.
 
 ## Authors
 
-Embedded Systems Project Team
+**Nonthaphat Puangrot**
+- GitHub: [@Nonthaphat-Puangrot](https://github.com/Nonthaphat-Puangrot)
 
 ## Acknowledgments
 
